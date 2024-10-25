@@ -7,15 +7,19 @@ import StarIcon from "@mui/icons-material/Star";
 import "./app.css";
 import axios from "axios";
 import { useState, useEffect } from "react";
-import {format} from "timeago.js";
+import { format } from "timeago.js";
 
 function App() {
-  const currentUser = "Jane"
+  const [currentUser, setCurrentUser] = useState(null);
   const [pins, setPins] = useState([]);
   const [currenPlaceId, setCurrenPlaceId] = useState(null);
   const [newPlace, setNewPlace] = useState(null);
+  const [title, setTitle] = useState(null);
+  const [description, setDescription] = useState(null);
+  const [rating, setRating] = useState(0);
   const [viewport, setViewport] = useState({
-    width: "100vw", height: "100vh",
+    width: "100vw",
+    height: "100vh",
     latitude: 20.8,
     longitude: 78.4,
     zoom: 4,
@@ -29,20 +33,39 @@ function App() {
         console.log(err);
       }
     };
-    getPins()
+    getPins();
   }, []);
 
-  const handleMarkerClick = (id,latitude,longitude) => {
+  const handleMarkerClick = (id, latitude, longitude) => {
     setCurrenPlaceId(id);
-    setViewport({...viewport, latitude:latitude, longitude:longitude});
-  }
+    setViewport({ ...viewport, latitude: latitude, longitude: longitude });
+  };
 
-  const handleAddClick = (e)=>{
+  const handleAddClick = (e) => {
     const [lat, long] = [e.lngLat.lat, e.lngLat.lng];
     setNewPlace({
       lat,
-      long
+      long,
     });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newPin = {
+      username: currentUser,
+      title,
+      description,
+      rating,
+      latitude: newPlace.lat,
+      longitude: newPlace.long,
+    };
+    try {
+      const res = await axios.post("/pins", newPin);
+      setPins([...pins, res.data]);
+      setNewPlace(null);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
@@ -59,7 +82,7 @@ function App() {
         onDblClick={handleAddClick}
         transitionDuration="200"
       >
-        {pins.map(p => (
+        {pins.map((p) => (
           <>
             <Marker
               latitude={p.latitude}
@@ -69,60 +92,85 @@ function App() {
               <RoomIcon
                 style={{
                   fontSize: 30,
-                  color: p.username===currentUser? "tomato" :"slateblue",
+                  color: p.username === currentUser ? "tomato" : "slateblue",
                   cursor: "pointer",
                 }}
-                onClick = {() => handleMarkerClick(p._id, p.latitude, p.longitude)}
+                onClick={() =>
+                  handleMarkerClick(p._id, p.latitude, p.longitude)
+                }
               ></RoomIcon>
             </Marker>
-            {(p._id === currenPlaceId) && 
-            <Popup longitude={p.longitude} latitude={p.latitude} anchor="left" closeOnClick={false}
-            onClose={() => setCurrenPlaceId(null)}>
-              <div className="card">
-                <label>Place</label>
-                <h4 className="place">{p.title}</h4>
-                <label>Review</label>
-                <p className="description">{p.description}</p>
-                <label>Rating</label>
-                <div className="stars">
-                  <StarIcon className="star" />
-                  <StarIcon className="star" />
-                  <StarIcon className="star" />
-                  <StarIcon className="star" />
-                  <StarIcon className="star" />
+            {p._id === currenPlaceId && (
+              <Popup
+                longitude={p.longitude}
+                latitude={p.latitude}
+                anchor="left"
+                closeOnClick={false}
+                onClose={() => setCurrenPlaceId(null)}
+              >
+                <div className="card">
+                  <label>Place</label>
+                  <h4 className="place">{p.title}</h4>
+                  <label>Review</label>
+                  <p className="description">{p.description}</p>
+                  <label>Rating</label>
+                  <div className="stars">
+                    {Array(p.rating).fill(<StarIcon className="star" />)}
+                  </div>
+                  <label>Information</label>
+                  <span className="username">
+                    Created by <b>{p.username}</b>
+                  </span>
+                  <span className="date">{format(p.createdAt)} </span>
                 </div>
-                <label>Information</label>
-                <span className="username">
-                  Created by <b>{p.username}</b>
-                </span>
-                <span className="date">{format(p.createdAt)} </span>
-              </div>
-            </Popup>
-            }
+              </Popup>
+            )}
           </>
-          ))}
-          {newPlace && (
-         <Popup longitude={newPlace.long} latitude={newPlace.lat} anchor="left" closeOnClick={false}
-            onClose={() => setNewPlace(null)}> 
+        ))}
+        {newPlace && (
+          <Popup
+            longitude={newPlace.long}
+            latitude={newPlace.lat}
+            anchor="left"
+            closeOnClick={false}
+            onClose={() => setNewPlace(null)}
+          >
             <div>
-              <form>
+              <form onSubmit={handleSubmit}>
                 <label> Title </label>
-                <input placeholder="Enter a title"/>
+                <input
+                  placeholder="Enter a title"
+                  onChange={(e) => setTitle(e.target.value)}
+                />
                 <label> Review </label>
-                <textarea placeholder="Enter your review"/>
+                <textarea
+                  placeholder="Enter your review"
+                  onChange={(e) => setDescription(e.target.value)}
+                />
                 <label> Rating </label>
-                <select>
+                <select onChange={(e) => setRating(e.target.value)}>
                   <option value="1">1</option>
                   <option value="2">2</option>
                   <option value="3">3</option>
                   <option value="4">4</option>
                   <option value="5">5</option>
                 </select>
-                <button className="submitButton" type="submit"> Add Pin </button>
+                <button className="submitButton" type="submit">
+                  {" "}
+                  Add Pin{" "}
+                </button>
               </form>
             </div>
-         </Popup>
-         )}
+          </Popup>
+        )}
+        {currentUser ? (
+          <button className="button logout"> Logout </button>
+        ) : (
+          <div className="buttons">
+            <button className="button login"> Login </button>
+            <button className="button register"> Register </button>
+          </div>
+        )}
       </Map>
     </div>
   );
